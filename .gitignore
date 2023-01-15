@@ -1,0 +1,8 @@
+# ignoring dir
+/provided_scripts
+
+#ignoring all .md files 
+.md
+
+#except README.md file
+! README.md
