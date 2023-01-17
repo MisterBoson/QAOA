@@ -1,8 +1,10 @@
 # ignoring dir
 /provided_scripts
+/figures
 
 #ignoring all .md files 
 .md
+to-do
 
 #except README.md file
 ! README.md
