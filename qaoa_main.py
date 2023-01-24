@@ -4,8 +4,13 @@ import networkx as nx
 import matplotlib.pyplot as plt
 import ipyparallel as ipp
 plt.style.use('classic')
-
+import sys 
+import ray
 import pennylane as qml
+from pennylane import qaoa 
+from multiprocessing import Pool
+import os
+import datetime
 
 #Qiskit packages
 import qiskit
@@ -16,21 +21,20 @@ from qiskit.utils import QuantumInstance
 from qiskit.opflow import I, X, Y, Z, Zero, One, PauliExpectation, CircuitSampler, StateFn, DictStateFn, CircuitStateFn, NaturalGradient
 import qaoa_functions as fn
 
-
-
+def check_params(param, n_repititions):
+    if np.isscalar(param):
+        return np.repeat(param, n_repititions)
+    elif len(param)==n_repititions:
+        return np.array(param)
+    else:
+        raise ValueError('Shape of param does not match requirements')
 
 main_path= r'/home/mrboson/Documents/Academic_Route/MS_Physics/Courses/Computational Physics /qaoa_repo/quantum-approximate-optimization-algorithm'
 
-from multiprocessing import Pool
-import os
-
 if __name__ == '__main__':
-    path_wd = path_parent # r'C:\Users\manue\Desktop\UNI\9. Semester\CP-2'
+    path_wd = main_path 
     while not (os.getcwd()==path_wd):
         os.chdir(path_wd)
-    # from multiprocessing_function import run_qaoa_dict, RandomIsing_Manuel
-    
-    
     
     
     path_network = path_wd + r'/Networks/'
@@ -42,16 +46,8 @@ if __name__ == '__main__':
     
     nx.draw(G)
     
-    def check_params(param, n_repititions):
-        if np.isscalar(param):
-            return np.repeat(param, n_repititions)
-        elif len(param)==n_repititions:
-            return np.array(param)
-        else:
-            raise ValueError('Shape of param does not match requirements')
-    
     # Parameters
-    parent_path = path_wd + r'/Results/'
+    parent_path = path_wd + r'/figures/'
     n_repititions = 1
     n_parallel = 8
     max_iterations = 3 # Standard value, can be changed when called from console
@@ -63,10 +59,13 @@ if __name__ == '__main__':
     print('max_iterations: ', max_iterations)
     
     #Constants
-    method_rep    = ['QNGD', 'AdamGD']
+    # method_rep    = ['QNGD', 'GD', 'AdamGD']
+    # method_rep    = ['GD', 'GD', 'AdamGD', 'AdamGD']
+    method_rep    = 'GD'
     degree_rep    = 4  # Number of connected nodes
-    order_rep     = [5,6,8,10]  # Number of Qubits
+    order_rep     = 5  # Number of Qubits
     depth_rep     = 5
+    # step_size_rep = [0.001, 0.0001, 0.001, 0.0001]
     step_size_rep = 0.01
     localTerm_rep = True
     random_graph_rep = False
@@ -79,15 +78,15 @@ if __name__ == '__main__':
     localTerm_rep = check_params(localTerm_rep, n_repititions)
     random_graph_rep = check_params(random_graph_rep, n_repititions)
     
-    
+
     for i in range(n_repititions):
-        method = method_rep[i].item()
-        degree = degree_rep[i].item()
-        order = order_rep[i].item()
-        depth = depth_rep[i].item()
-        step_size = step_size_rep[i].item()
-        localTerm = localTerm_rep[i].item()
-        random_graph = random_graph_rep[i].item()
+        method = method_rep[i]
+        degree = degree_rep[i]
+        order = order_rep[i]
+        depth = depth_rep[i]
+        step_size = step_size_rep[i]
+        localTerm = localTerm_rep[i]
+        random_graph = random_graph_rep[i]
         print('method: ', method)
         print('depth: ', depth)
         folder_addition = '_test'
@@ -110,11 +109,9 @@ if __name__ == '__main__':
             args.append(args_i)
         
         with Pool(processes=16) as pool:
-            result = pool.map(functions.run_qaoa_dict, args)
-        # result = functions.run_qaoa_dict(args[0])
+            result = pool.map(fn.run_qaoa_dict, args)
         
-        # if 'result' in locals():
-        # filename = f', method={method}, degree={degree}, order={order}, depth={depth}, step_size={step_size}, localTerm={localTerm}.npy'
+        
         filename =   f'method={method}, degree={degree}, order={order}, depth={depth}, step_size={step_size}, localTerm={localTerm}'
         # now = datetime.datetime.now().strftime('%Y-%m-%d--%H-%M-%S')
         np.save(path + '/opt_results,     ' + filename + '.npy', result)

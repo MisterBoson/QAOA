@@ -1,3 +1,27 @@
+#General Packages
+import numpy as np
+import networkx as nx
+import matplotlib.pyplot as plt
+import ipyparallel as ipp
+plt.style.use('classic')
+import sys 
+import ray
+import pennylane as qml
+from pennylane import qaoa 
+from multiprocessing import Pool
+import os
+import datetime
+
+#Qiskit packages
+import qiskit
+from qiskit.algorithms import QAOA, NumPyMinimumEigensolver
+from qiskit.algorithms.optimizers import COBYLA, ADAM, SLSQP, GradientDescent
+from qiskit import Aer
+from qiskit.utils import QuantumInstance
+from qiskit.opflow import I, X, Y, Z, Zero, One, PauliExpectation, CircuitSampler, StateFn, DictStateFn, CircuitStateFn, NaturalGradient
+import qaoa_functions as fn
+
+
 class RandomIsing:
     def __init__(self, d, nqubits, localTerm=True):
         """
@@ -99,7 +123,7 @@ class RandomIsing:
         @qml.qnode(dev, interface="autograd")
         def cost_function(params):
             self.make_circuit(params, p)
-            return qml.expval(self.hamiltonian2())
+            return qml.expval(self.hamiltonian_qngd())
         
         # Info init_params: [beta[0],..., beta[p], gamma[0],..., gamma[p]]
         rng = np.random.default_rng()
@@ -145,4 +169,52 @@ class RandomIsing:
             if ((conv <= conv_tol) and (n >= 20)):
                 break
         return dev, cost_function, opt_param_history, opt_cost_history   
+
+
+def run_qaoa(process_number, path, d, nqubits, localTerm, p, 
+             G=None, J=None, h=None,   # Graph and weights
+             method='QNGD', max_iterations=5000, conv_tol=1e-25, step_size=0.01, print_step=10
+             ):
+    """
+    print('localTerm:', localTerm)
+    print('d:', d)
+    print('nqubits:', nqubits)
+    print(f'Thread: {process_number:.0f}', J)
+    """
     
+    tmp = RandomIsing(d, nqubits, localTerm)
+    if G:
+         tmp.J = J
+         tmp.h = h
+    hamiltonian = qml.matrix(tmp.hamiltonian_qngd())
+    eigenvalues, eigenvectors = np.linalg.eig(hamiltonian)
+    #print('Process #{:.0f}: smallest eigenvalue: '.format(process_number), np.min(eigenvalues))
+    dev, cost_function, opt_param_history, opt_cost_history = tmp.QAOA(p, method=method, step_size=step_size, max_iterations=max_iterations, process_number=process_number)
+    
+    result = {'process_number':     process_number,
+              # 'class_instance':     tmp,
+              # 'dev':                dev,
+              'cost_function':      cost_function,
+              'opt_param_history':  opt_param_history,
+              'opt_cost_history':   opt_cost_history,
+              'eigenvalues':        eigenvalues,
+              'eigenvectors':       eigenvectors,
+              'method':             method,
+              'degree':             d,
+              'depth':              p,
+              'order':              nqubits,
+              'step_size':          step_size,
+              'conv_tol':           conv_tol,
+              'max_iterations':     max_iterations,
+              'localTerm':          localTerm,
+              'J':                  tmp.J,
+              'h':                  tmp.h,
+              }
+
+    filename = f'method={method}, degree={d}, order={nqubits}, depth={p}, step_size={step_size}, localTerm={localTerm}, process_number={process_number}'
+    # now = datetime.datetime.now().strftime('%Y-%m-%d--%H-%M-%S')
+    np.save(path + '/single_results, ' + filename + '.npy', result)
+    return result
+
+def run_qaoa_dict(args):
+    return run_qaoa(**args)

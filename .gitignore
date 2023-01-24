@@ -1,6 +1,8 @@
 # ignoring dir
 /provided_scripts
 /figures
+/Networks
+
 
 #ignoring all .md files 
 .md
