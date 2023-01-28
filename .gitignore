@@ -3,6 +3,10 @@
 /figures
 /Networks
 
+#.git files
+.gitignore
+.gitconfig
+.gitlab-ci.yml
 
 #ignoring all .md files 
 .md
