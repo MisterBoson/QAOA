@@ -1,10 +1,6 @@
 # ignoring dir
-/provided_scripts
-/figures
-/Networks
 
 #.git files
-.gitignore
 .gitconfig
 .gitlab-ci.yml
 
